@@ -1,0 +1,69 @@
+name: release
+
+concurrency:
+  group: release-${{ github.head_ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    tags:
+      - "llvmorg-*"
+
+jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: true
+          prerelease: true
+
+  build_and_upload:
+    strategy:
+      matrix:
+        include:
+          - name: MacOS 10.15
+            host_runner: macos-10.15
+            darwin_version: darwin_19
+          - name: MacOS 11
+            host_runner: macos-11
+            darwin_version: darwin_20
+          - name: MacOS 12
+            host_runner: macos-12
+            darwin_version: darwin_21
+    name: Build llvm on ${{ matrix.name }}
+    runs-on: ${{ matrix.host_runner }}
+    needs: create_release
+    steps:
+    - name: Install dependency
+      run: |
+        brew install ninja boost cmake
+
+    - name: Build llvm
+      run: |
+        git clone https://github.com/llvm/llvm-project.git --branch=llvmorg-14.0.6 --depth=1
+        cmake -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project/llvm
+        cmake --build build
+
+    - name: Package llvm
+      run: |
+        cmake --build build --target package
+
+    - name: Upload LLVM zip package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build/LLVM-14.0.6-Darwin.zip
+        asset_name: llvm-14.0.6-${{ matrix.darwin_version }}.zip
+        asset_content_type: application/zip
