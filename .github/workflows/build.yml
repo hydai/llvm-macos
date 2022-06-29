@@ -48,6 +48,6 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: llvm
-        path: build/*.zip
+        name: llvm-14.0.6-${{ matrix.darwin_version }}
+        path: build/LLVM-14.0.6-Darwin.zip
         retention-days: 5
