@@ -63,7 +63,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
         asset_path: build/LLVM-14.0.6-Darwin.zip
         asset_name: llvm-14.0.6-${{ matrix.darwin_version }}.zip
         asset_content_type: application/zip
